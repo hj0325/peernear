@@ -25,7 +25,7 @@ export default function Home() {
       
       {/* 배경 원 (radial gradient + blur) - 배경 위, 섬 아래 */}
       <div
-        className="absolute w-[500px] h-[500px] rounded-full pointer-events-none"
+        className="absolute w-[400px] h-[400px] rounded-full pointer-events-none"
         style={{
           background: "radial-gradient(50% 50% at 54.9% 25.39%, #FFFDE6 0%, #9ECDF1 100%)",
           filter: "blur(50px)",

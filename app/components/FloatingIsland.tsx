@@ -24,8 +24,8 @@ export default function FloatingIsland() {
     const { width, height } = getSize();
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
-    camera.position.set(0, -0.2, 4.5);
+    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+    camera.position.set(0, -0.2, 5);
     camera.lookAt(0, -0.2, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -57,16 +57,13 @@ export default function FloatingIsland() {
         planeMaterial.map = tex;
         planeMaterial.needsUpdate = true;
         
-        // 이미지 비율에 맞게 스케일 조정
+        // 이미지 비율에 맞게 스케일 조정 (원본 비율 유지)
         const img = tex.image as HTMLImageElement;
         if (img?.naturalWidth && img.naturalHeight) {
-          const aspect = img.naturalWidth / img.naturalHeight;
-          const baseScale = 1.6;
-          plane.scale.set(
-            aspect > 1 ? baseScale : baseScale / aspect,
-            aspect > 1 ? baseScale / aspect : baseScale,
-            1
-          );
+          const imgAspect = img.naturalWidth / img.naturalHeight;
+          const baseScale = 1.8;
+          // 원본 이미지 비율을 정확히 유지
+          plane.scale.set(baseScale, baseScale / imgAspect, 1);
         }
       },
       undefined,

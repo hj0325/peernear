@@ -26,14 +26,14 @@ export default function AdaptationSlider({ value, onChange }: AdaptationSliderPr
             background: `linear-gradient(to right, #7DD3FC 0%, #BAE6FD ${percentage}%, #E5E7EB ${percentage}%, #E5E7EB 100%)`,
             borderRadius: "9999px",
             outline: "none",
-            height: "4px",
+            height: "10px",
           }}
         />
         <style jsx global>{`
           .slider-input::-webkit-slider-thumb {
             appearance: none;
-            width: 14px;
-            height: 14px;
+            width: 18px;
+            height: 18px;
             background: #FFF8E1;
             border-radius: 50%;
             cursor: pointer;
@@ -42,8 +42,8 @@ export default function AdaptationSlider({ value, onChange }: AdaptationSliderPr
             position: relative;
           }
           .slider-input::-moz-range-thumb {
-            width: 14px;
-            height: 14px;
+            width: 16px;
+            height: 16px;
             background: #FFF8E1;
             border: none;
             border-radius: 50%;
@@ -51,11 +51,11 @@ export default function AdaptationSlider({ value, onChange }: AdaptationSliderPr
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
           }
           .slider-input::-webkit-slider-runnable-track {
-            height: 4px;
+            height: 6px;
             border-radius: 9999px;
           }
           .slider-input::-moz-range-track {
-            height: 4px;
+            height: 6px;
             border-radius: 9999px;
             background: transparent;
           }
