@@ -13,7 +13,7 @@ export default function Home() {
   };
 
   return (
-    <div className="relative w-full min-h-screen overflow-hidden flex flex-col items-center">
+    <div className="relative w-full h-screen overflow-hidden flex flex-col items-center justify-between">
       {/* 그라데이션 배경 - 가장 아래 */}
       <div 
         className="absolute inset-0"
@@ -25,11 +25,11 @@ export default function Home() {
       
       {/* 배경 원 (radial gradient + blur) - 배경 위, 섬 아래 */}
       <div
-        className="absolute w-[400px] h-[400px] rounded-full pointer-events-none"
+        className="absolute w-[320px] h-[320px] rounded-full pointer-events-none"
         style={{
           background: "radial-gradient(50% 50% at 54.9% 25.39%, #FFFDE6 0%, #9ECDF1 100%)",
           filter: "blur(50px)",
-          top: "50%",
+          top: "30%",
           left: "50%",
           transform: "translate(-50%, -50%)",
           zIndex: 1,
@@ -37,21 +37,21 @@ export default function Home() {
       />
       
       {/* 상단 타이틀 */}
-      <div className="w-full pt-14 pb-2 flex justify-center relative" style={{ zIndex: 30 }}>
-        <h1 className="text-xl font-semibold text-black tracking-wider uppercase">
+      <div className="w-full pt-6 pb-0 flex justify-center relative flex-shrink-0" style={{ zIndex: 30 }}>
+        <h1 className="text-lg font-semibold text-black tracking-wider uppercase">
           PEERNEAR
         </h1>
       </div>
 
       {/* 중앙 Floating Island - 원 위 */}
-      <div className="flex-1 w-full relative flex items-end justify-center pb-8" style={{ zIndex: 10, minHeight: "500px", height: "100%" }}>
+      <div className="w-full relative flex items-center justify-center flex-1" style={{ zIndex: 10, minHeight: 0 }}>
         <FloatingIsland />
       </div>
 
       {/* 하단 컨텐츠 영역 */}
-      <div className="w-full px-6 pb-10 flex flex-col items-center gap-7 relative" style={{ zIndex: 20 }}>
+      <div className="w-full px-6 pb-6 flex flex-col items-center gap-4 relative flex-shrink-0" style={{ zIndex: 20 }}>
         {/* 질문 텍스트 */}
-        <p className="text-center text-black text-base font-normal max-w-sm leading-relaxed">
+        <p className="text-center text-black text-sm font-normal max-w-sm leading-snug px-2">
           How well do you feel you&apos;ve adapted to your current environment?
         </p>
 
@@ -61,32 +61,32 @@ export default function Home() {
         </div>
 
         {/* Next 버튼 */}
-        <div className="w-full flex justify-end pr-4">
+        <div className="w-full flex justify-end pr-2 pt-2">
           <button
             onClick={handleNext}
-            className="px-4 py-2.5 rounded-full bg-gray-100 flex items-center gap-2 text-gray-600 font-medium hover:bg-gray-200 transition-colors"
+            className="px-4 py-2.5 rounded-full bg-white flex items-center gap-2 text-black font-medium hover:bg-gray-50 transition-colors border border-gray-200"
             style={{
               borderRadius: "9999px",
             }}
           >
             <span className="text-sm">Next</span>
             <div 
-              className="w-7 h-7 rounded-full flex items-center justify-center"
+              className="w-6 h-6 rounded-full flex items-center justify-center"
               style={{
                 background: "#BFDBFE",
                 boxShadow: "0 1px 2px rgba(0, 0, 0, 0.1)",
               }}
             >
               <svg
-                width="10"
-                height="10"
+                width="8"
+                height="8"
                 viewBox="0 0 12 12"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
               >
                 <path
                   d="M4.5 3L7.5 6L4.5 9"
-                  stroke="#3B82F6"
+                  stroke="white"
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"

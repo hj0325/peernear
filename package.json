@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node server.js",
+    "dev:http": "next dev -H 0.0.0.0",
+    "generate-cert": "bash generate-cert.sh",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

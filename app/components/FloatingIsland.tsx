@@ -11,22 +11,22 @@ export default function FloatingIsland() {
 
     const container = containerRef.current;
     
-    // 초기 크기 설정 (최소 크기 보장)
+    // 초기 크기 설정 (모바일 최적화)
     const getSize = () => {
       if (!containerRef.current) {
-        return { width: window.innerWidth, height: Math.max(400, window.innerHeight * 0.5) };
+        return { width: window.innerWidth, height: window.innerHeight * 0.45 };
       }
       const w = containerRef.current.clientWidth || window.innerWidth;
-      const h = containerRef.current.clientHeight || Math.max(400, window.innerHeight * 0.5);
-      return { width: Math.max(w, 300), height: Math.max(h, 400) };
+      const h = containerRef.current.clientHeight || window.innerHeight * 0.45;
+      return { width: Math.max(w, 300), height: Math.max(h, 200) };
     };
     
     const { width, height } = getSize();
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-    camera.position.set(0, -0.2, 5);
-    camera.lookAt(0, -0.2, 0);
+    const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 1000);
+    camera.position.set(0, 0, 5.5);
+    camera.lookAt(0, 0, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(width, height);
@@ -57,12 +57,12 @@ export default function FloatingIsland() {
         planeMaterial.map = tex;
         planeMaterial.needsUpdate = true;
         
-        // 이미지 비율에 맞게 스케일 조정 (원본 비율 유지)
+        // 이미지 비율에 맞게 스케일 조정 (원본 비율 정확히 유지)
         const img = tex.image as HTMLImageElement;
         if (img?.naturalWidth && img.naturalHeight) {
           const imgAspect = img.naturalWidth / img.naturalHeight;
-          const baseScale = 1.8;
-          // 원본 이미지 비율을 정확히 유지
+          const baseScale = 1.5;
+          // 원본 이미지 비율을 정확히 유지 (위아래 압축 방지)
           plane.scale.set(baseScale, baseScale / imgAspect, 1);
         }
       },
@@ -72,9 +72,9 @@ export default function FloatingIsland() {
       }
     );
     
-    plane.rotation.x = -0.18;
-    plane.rotation.y = 0.08;
-    plane.position.y = -0.1;
+    plane.rotation.x = -0.15;
+    plane.rotation.y = 0.1;
+    plane.position.y = 0;
     scene.add(plane);
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
@@ -88,9 +88,9 @@ export default function FloatingIsland() {
 
     function animate() {
       const t = Date.now() / 1000 - startTime;
-      plane.position.y = -0.1 + Math.sin(t * 0.6) * 0.08;
-      plane.rotation.y = 0.08 + Math.sin(t * 0.4) * 0.08;
-      plane.rotation.x = -0.18 + Math.cos(t * 0.35) * 0.03;
+      plane.position.y = 0 + Math.sin(t * 0.6) * 0.08;
+      plane.rotation.y = 0.1 + Math.sin(t * 0.4) * 0.08;
+      plane.rotation.x = -0.15 + Math.cos(t * 0.35) * 0.03;
       renderer.render(scene, camera);
       animationId = requestAnimationFrame(animate);
     }
@@ -122,7 +122,7 @@ export default function FloatingIsland() {
     <div
       ref={containerRef}
       className="relative w-full h-full"
-      style={{ zIndex: 10, width: "100%", height: "100%", minHeight: "400px" }}
+      style={{ zIndex: 10, width: "100%", height: "100%" }}
       aria-hidden
     />
   );
