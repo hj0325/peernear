@@ -10,14 +10,23 @@ export default function FloatingIsland() {
     if (!containerRef.current) return;
 
     const container = containerRef.current;
-    const width = container.clientWidth;
-    const height = container.clientHeight;
+    
+    // 초기 크기 설정 (최소 크기 보장)
+    const getSize = () => {
+      if (!containerRef.current) {
+        return { width: window.innerWidth, height: Math.max(400, window.innerHeight * 0.5) };
+      }
+      const w = containerRef.current.clientWidth || window.innerWidth;
+      const h = containerRef.current.clientHeight || Math.max(400, window.innerHeight * 0.5);
+      return { width: Math.max(w, 300), height: Math.max(h, 400) };
+    };
+    
+    const { width, height } = getSize();
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
-    const isMobile = width < 768;
-    camera.position.set(0, 0, isMobile ? 3.2 : 4);
-    camera.lookAt(0, 0, 0);
+    camera.position.set(0, -0.2, 4.5);
+    camera.lookAt(0, -0.2, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(width, height);
@@ -25,33 +34,50 @@ export default function FloatingIsland() {
     renderer.setClearColor(0x000000, 0);
     container.appendChild(renderer.domElement);
 
-    const baseScale = isMobile ? 1.45 : 1.2;
     const textureLoader = new THREE.TextureLoader();
-    const islandTexture = textureLoader.load("/island.png", (tex: THREE.Texture) => {
-      tex.colorSpace = THREE.SRGBColorSpace;
-      tex.minFilter = THREE.LinearFilter;
-      tex.magFilter = THREE.LinearFilter;
-      const img = tex.image as HTMLImageElement;
-      if (img?.naturalWidth && img.naturalHeight) {
-        const aspect = img.naturalWidth / img.naturalHeight;
-        const sx = (aspect > 1 ? 1 : 1 / aspect) * baseScale;
-        const sy = (aspect > 1 ? 1 / aspect : 1) * baseScale;
-        plane.scale.set(sx, sy, 1);
-      }
-    });
-
-    const planeGeometry = new THREE.PlaneGeometry(baseScale, baseScale);
+    const planeGeometry = new THREE.PlaneGeometry(2.0, 2.0);
+    
     const planeMaterial = new THREE.MeshBasicMaterial({
-      map: islandTexture,
       transparent: true,
       side: THREE.DoubleSide,
       depthWrite: true,
       alphaTest: 0.01,
     });
+    
     const plane = new THREE.Mesh(planeGeometry, planeMaterial);
-    plane.rotation.x = -0.25;
-    plane.rotation.y = 0.15;
-    plane.position.y = isMobile ? 0.05 : 0.1;
+    
+    // 텍스처 로드 및 설정
+    const islandTexture = textureLoader.load(
+      "/island.png",
+      (tex) => {
+        // 텍스처 로드 완료
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.minFilter = THREE.LinearFilter;
+        tex.magFilter = THREE.LinearFilter;
+        planeMaterial.map = tex;
+        planeMaterial.needsUpdate = true;
+        
+        // 이미지 비율에 맞게 스케일 조정
+        const img = tex.image as HTMLImageElement;
+        if (img?.naturalWidth && img.naturalHeight) {
+          const aspect = img.naturalWidth / img.naturalHeight;
+          const baseScale = 1.6;
+          plane.scale.set(
+            aspect > 1 ? baseScale : baseScale / aspect,
+            aspect > 1 ? baseScale / aspect : baseScale,
+            1
+          );
+        }
+      },
+      undefined,
+      (error) => {
+        console.error("Failed to load island texture:", error);
+      }
+    );
+    
+    plane.rotation.x = -0.18;
+    plane.rotation.y = 0.08;
+    plane.position.y = -0.1;
     scene.add(plane);
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
@@ -63,12 +89,11 @@ export default function FloatingIsland() {
     let animationId: number;
     const startTime = Date.now() / 1000;
 
-    const floatState = { baseY: isMobile ? 0.05 : 0.1 };
     function animate() {
       const t = Date.now() / 1000 - startTime;
-      plane.position.y = floatState.baseY + Math.sin(t * 0.6) * 0.08;
-      plane.rotation.y = 0.15 + Math.sin(t * 0.4) * 0.08;
-      plane.rotation.x = -0.25 + Math.cos(t * 0.35) * 0.03;
+      plane.position.y = -0.1 + Math.sin(t * 0.6) * 0.08;
+      plane.rotation.y = 0.08 + Math.sin(t * 0.4) * 0.08;
+      plane.rotation.x = -0.18 + Math.cos(t * 0.35) * 0.03;
       renderer.render(scene, camera);
       animationId = requestAnimationFrame(animate);
     }
@@ -76,27 +101,9 @@ export default function FloatingIsland() {
 
     function onResize() {
       if (!containerRef.current) return;
-      const w = containerRef.current.clientWidth;
-      const h = containerRef.current.clientHeight;
-      const mobile = w < 768;
+      const { width: w, height: h } = getSize();
       camera.aspect = w / h;
-      camera.position.z = mobile ? 3.2 : 4;
       camera.updateProjectionMatrix();
-      const scale = mobile ? 1.45 : 1.2;
-      floatState.baseY = mobile ? 0.05 : 0.1;
-      plane.scale.set(scale, scale, 1);
-      plane.position.y = floatState.baseY;
-      if (islandTexture.image) {
-        const img = islandTexture.image as HTMLImageElement;
-        if (img.naturalWidth && img.naturalHeight) {
-          const aspect = img.naturalWidth / img.naturalHeight;
-          plane.scale.set(
-            (aspect > 1 ? 1 : 1 / aspect) * scale,
-            (aspect > 1 ? 1 / aspect : 1) * scale,
-            1
-          );
-        }
-      }
       renderer.setSize(w, h);
     }
     window.addEventListener("resize", onResize);
@@ -117,7 +124,8 @@ export default function FloatingIsland() {
   return (
     <div
       ref={containerRef}
-      className="absolute inset-0 w-full h-full min-h-screen"
+      className="relative w-full h-full"
+      style={{ zIndex: 10, width: "100%", height: "100%", minHeight: "400px" }}
       aria-hidden
     />
   );
