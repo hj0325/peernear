@@ -52,6 +52,10 @@ const FloatingIsland = forwardRef(function FloatingIsland(
         const overlayCanvas = overlayCanvasRef.current;
         const containerEl = containerRef.current;
 
+        // Ensure latest WebGL frame is present for drawImage()
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
         // Prefer video resolution for crisp captures
         const outW =
           (videoEl && videoEl.videoWidth) || overlayCanvas?.width || window.innerWidth;
@@ -64,6 +68,12 @@ const FloatingIsland = forwardRef(function FloatingIsland(
 
         const ctx = out.getContext("2d");
         if (!ctx) return;
+
+        // Scale UI drawings to match capture resolution (e.g., 4K)
+        const containerRect = containerEl?.getBoundingClientRect();
+        const uiScaleRaw =
+          containerRect && containerRect.width > 0 ? outW / containerRect.width : 1;
+        const uiScale = Math.max(1, Math.min(8, uiScaleRaw));
 
         // Draw camera video first (if present)
         if (videoEl && videoEl.readyState >= 2) {
@@ -86,6 +96,8 @@ const FloatingIsland = forwardRef(function FloatingIsland(
 
         const drawWrappedCenteredText = (text: string, y: number, style?: {
           font?: string;
+          fontSize?: number;
+          fontWeight?: number;
           fillStyle?: string;
           maxWidthRatio?: number;
           lineHeight?: number;
@@ -94,7 +106,8 @@ const FloatingIsland = forwardRef(function FloatingIsland(
           shadowOffsetY?: number;
         }) => {
           const {
-            font = "600 20px system-ui, -apple-system, Segoe UI, Roboto, Arial",
+            fontSize = 20,
+            fontWeight = 600,
             fillStyle = "#FFFFFF",
             maxWidthRatio = 0.9,
             lineHeight = 26,
@@ -105,14 +118,15 @@ const FloatingIsland = forwardRef(function FloatingIsland(
 
           const maxW = outW * maxWidthRatio;
           ctx.save();
-          ctx.font = font;
+          const scaledFontSize = Math.round(fontSize * uiScale);
+          ctx.font = `${fontWeight} ${scaledFontSize}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
           ctx.fillStyle = fillStyle;
           ctx.textAlign = "center";
           ctx.textBaseline = "top";
           ctx.shadowColor = shadowColor;
-          ctx.shadowBlur = shadowBlur;
+          ctx.shadowBlur = shadowBlur * uiScale;
           ctx.shadowOffsetX = 0;
-          ctx.shadowOffsetY = shadowOffsetY;
+          ctx.shadowOffsetY = shadowOffsetY * uiScale;
 
           // very small word-wrapping
           const words = text.split(/\s+/);
@@ -132,7 +146,7 @@ const FloatingIsland = forwardRef(function FloatingIsland(
           let yy = y;
           for (const l of lines) {
             ctx.fillText(l, outW / 2, yy);
-            yy += lineHeight;
+            yy += lineHeight * uiScale;
           }
           ctx.restore();
         };
@@ -188,7 +202,8 @@ const FloatingIsland = forwardRef(function FloatingIsland(
         const bottomText = (opts?.bottomText || "").trim();
         if (topText) {
           drawWrappedCenteredText(topText, outH * 0.12, {
-            font: "600 24px system-ui, -apple-system, Segoe UI, Roboto, Arial",
+            fontSize: 24,
+            fontWeight: 600,
             lineHeight: 30,
             maxWidthRatio: 0.92,
           });
@@ -196,7 +211,8 @@ const FloatingIsland = forwardRef(function FloatingIsland(
         if (bottomText) {
           // place above bottom overlay area
           drawWrappedCenteredText(bottomText, outH * 0.62, {
-            font: "600 24px system-ui, -apple-system, Segoe UI, Roboto, Arial",
+            fontSize: 24,
+            fontWeight: 600,
             lineHeight: 30,
             maxWidthRatio: 0.92,
           });
@@ -271,7 +287,8 @@ const FloatingIsland = forwardRef(function FloatingIsland(
       antialias: true, 
       alpha: true,
       powerPreference: "high-performance",
-      preserveDrawingBuffer: false,
+      // IMPORTANT: required for reliable canvas capture (drawImage / toBlob)
+      preserveDrawingBuffer: true,
     });
     renderer.setSize(width, height);
     // AR 모드일 때는 최대 픽셀 비율 사용 (화질 개선)
