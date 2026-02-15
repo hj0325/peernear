@@ -16,12 +16,30 @@ export default function Home() {
   const [chatInput, setChatInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const islandRef = useRef<any>(null);
 
   const initialAssistantMessage = useMemo(
     () =>
       "Hi! This is PEER. How are you feeling in today's environment?",
     []
   );
+
+  const blossomCount = Math.max(1, Math.min(10, Math.round(adaptationValue)));
+  const blossomWord = (() => {
+    const map = {
+      1: "one",
+      2: "two",
+      3: "three",
+      4: "four",
+      5: "five",
+      6: "six",
+      7: "seven",
+      8: "eight",
+      9: "nine",
+      10: "ten",
+    } as const;
+    return (map as any)[blossomCount] || String(blossomCount);
+  })();
 
   const requestMotionPermission = async () => {
     // iOS Safari: requires user gesture to allow deviceorientation/devicemotion
@@ -55,6 +73,23 @@ export default function Home() {
   };
   const toggleFacing = () => {
     setCameraFacing((f) => (f === "environment" ? "user" : "environment"));
+  };
+
+  const handleCapture = async () => {
+    try {
+      const selfieBottom =
+        `Wow! You've grown ${blossomWord} blossoms already. You're settling in beautifully.`;
+      const envBottom = "Here's your adaptation level!";
+      const bottomText = cameraFacing === "user" ? selfieBottom : envBottom;
+      const topText = isChatOpen ? (lastAssistant || initialAssistantMessage) : "";
+
+      await islandRef.current?.capture?.({
+        topText,
+        bottomText: !isChatOpen ? bottomText : "",
+      });
+    } catch {
+      // ignore
+    }
   };
 
   const openChat = () => {
@@ -153,9 +188,11 @@ export default function Home() {
       {isCameraMode ? (
         <div className="absolute inset-0" style={{ zIndex: 10 }}>
           <FloatingIsland
+            ref={islandRef}
             isARMode={isCameraMode}
             enableMotion={motionEnabled}
             facingMode={cameraFacing}
+            adaptationValue={adaptationValue}
             onIslandClick={openChat}
             showClickMe={!isChatOpen}
           />
@@ -170,7 +207,13 @@ export default function Home() {
             zIndex: 10,
           }}
         >
-          <FloatingIsland isARMode={false} enableMotion={false} facingMode={cameraFacing} />
+          <FloatingIsland
+            ref={islandRef}
+            isARMode={false}
+            enableMotion={false}
+            facingMode={cameraFacing}
+            adaptationValue={adaptationValue}
+          />
         </div>
       )}
 
@@ -239,8 +282,23 @@ export default function Home() {
                 paddingBottom: "max(16px, env(safe-area-inset-bottom))",
               }}
             >
-              <div className="mt-2 text-center text-black font-medium" style={{ opacity: 0.85 }}>
-                Here&apos;s your adaptation level!
+              <div
+                className="mt-2 text-center font-medium"
+                style={{
+                  opacity: 0.85,
+                  color: cameraFacing === "user" ? "white" : "rgba(0,0,0,0.85)",
+                  textShadow: cameraFacing === "user" ? "0 2px 10px rgba(0,0,0,0.35)" : "none",
+                  fontSize: 16,
+                  lineHeight: 1.35,
+                }}
+              >
+                {cameraFacing === "user" ? (
+                  <>
+                    Wow! You&apos;ve grown {blossomWord} blossoms already. You&apos;re settling in beautifully.
+                  </>
+                ) : (
+                  <>Here&apos;s your adaptation level!</>
+                )}
               </div>
 
               <div className="w-full max-w-sm">
@@ -267,9 +325,10 @@ export default function Home() {
                 }}
               >
                 <button
+                  type="button"
                   aria-label="Capture"
                   className="w-12 h-12 rounded-full flex items-center justify-center"
-                  onClick={() => {}}
+                  onClick={handleCapture}
                 >
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                     <path
@@ -396,7 +455,7 @@ export default function Home() {
                       type="button"
                       aria-label="Capture"
                       className="w-12 h-12 rounded-full flex items-center justify-center"
-                      onClick={() => {}}
+                      onClick={handleCapture}
                     >
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                         <path
