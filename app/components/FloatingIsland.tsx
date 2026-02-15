@@ -5,10 +5,19 @@ import * as THREE from "three";
 
 interface FloatingIslandProps {
   isARMode?: boolean;
+  enableMotion?: boolean;
+  facingMode?: "environment" | "user";
+  onIslandClick?: () => void;
 }
 
-export default function FloatingIsland({ isARMode = false }: FloatingIslandProps) {
+export default function FloatingIsland({
+  isARMode = false,
+  enableMotion = false,
+  facingMode = "environment",
+  onIslandClick,
+}: FloatingIslandProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const clickMeRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -31,8 +40,10 @@ export default function FloatingIsland({ isARMode = false }: FloatingIslandProps
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 1000);
-    camera.position.set(0, 0, 5.5);
+    // AR 모드에서는 살짝 더 멀리 두되(가림 방지), 너무 작아지지 않게 조정
+    camera.position.set(0, 0, isARMode ? 6.0 : 5.5);
     camera.lookAt(0, 0, 0);
+    scene.add(camera);
 
     const renderer = new THREE.WebGLRenderer({ 
       antialias: true, 
@@ -45,6 +56,13 @@ export default function FloatingIsland({ isARMode = false }: FloatingIslandProps
     const pixelRatio = isARMode ? window.devicePixelRatio : Math.min(window.devicePixelRatio, 2);
     renderer.setPixelRatio(pixelRatio);
     renderer.setClearColor(0x000000, 0);
+    // overlay canvas (above native <video> in AR mode)
+    renderer.domElement.style.position = "absolute";
+    renderer.domElement.style.inset = "0";
+    renderer.domElement.style.width = "100%";
+    renderer.domElement.style.height = "100%";
+    renderer.domElement.style.zIndex = "2";
+    renderer.domElement.style.pointerEvents = "auto";
     container.appendChild(renderer.domElement);
 
     const textureLoader = new THREE.TextureLoader();
@@ -58,6 +76,9 @@ export default function FloatingIsland({ isARMode = false }: FloatingIslandProps
     });
     
     const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+    // Keep base scale so "breathing" doesn't accumulate
+    let islandBaseScaleX = 1;
+    let islandBaseScaleY = 1;
     
     // 텍스처 로드 및 설정
     const islandTexture = textureLoader.load(
@@ -75,9 +96,11 @@ export default function FloatingIsland({ isARMode = false }: FloatingIslandProps
         if (img?.naturalWidth && img.naturalHeight) {
           const imgAspect = img.naturalWidth / img.naturalHeight;
           // AR 모드일 때는 더 작게, 일반 모드일 때는 기존 크기 유지
-          const baseScale = isARMode ? 0.6 : 1.5;
+          const baseScale = isARMode ? 0.75 : 1.5;
           // 원본 이미지 비율을 정확히 유지 (위아래 압축 방지)
           plane.scale.set(baseScale, baseScale / imgAspect, 1);
+          islandBaseScaleX = baseScale;
+          islandBaseScaleY = baseScale / imgAspect;
         }
       },
       undefined,
@@ -88,12 +111,38 @@ export default function FloatingIsland({ isARMode = false }: FloatingIslandProps
     
     plane.rotation.x = -0.15;
     plane.rotation.y = 0.1;
-    plane.position.y = 0;
+    // base position (lifted toward center). AR mode centers higher.
+    const baseY = isARMode ? 0.62 : 0;
+    plane.position.y = baseY;
+    // push island slightly away in AR so it doesn't cover screen
+    plane.position.z = isARMode ? -0.7 : 0;
     scene.add(plane);
 
-    // AR 모드: 카메라 배경 설정
-    let videoTexture: THREE.VideoTexture | null = null;
-    let backgroundPlane: THREE.Mesh | null = null;
+    // AR mode camera background: use native <video> under the WebGL canvas
+    let insertedVideoEl: HTMLVideoElement | null = null;
+
+    // Click / tap hit test for island (raycast)
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    const onPointerDown = (e: PointerEvent) => {
+      if (!onIslandClick) return;
+      if (!isARMode) return;
+      const rect = renderer.domElement.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      const y = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+      pointer.set(x, y);
+      raycaster.setFromCamera(pointer, camera);
+      const hits = raycaster.intersectObject(plane, false);
+      if (hits.length > 0) onIslandClick();
+    };
+    renderer.domElement.addEventListener("pointerdown", onPointerDown, { passive: true });
+
+    // Motion parallax (AR-like): rotate camera using device orientation
+    let targetYaw = 0;
+    let targetPitch = 0;
+    let yaw = 0;
+    let pitch = 0;
+    let removeOrientationListener: null | (() => void) = null;
 
     if (isARMode) {
       const video = document.createElement("video");
@@ -102,13 +151,46 @@ export default function FloatingIsland({ isARMode = false }: FloatingIslandProps
       video.muted = true;
       videoRef.current = video;
 
+      // put the video behind the canvas for best camera quality
+      video.style.position = "absolute";
+      video.style.inset = "0";
+      video.style.width = "100%";
+      video.style.height = "100%";
+      video.style.objectFit = "cover";
+      video.style.zIndex = "1";
+      video.style.pointerEvents = "none";
+      // selfie mode usually feels correct mirrored
+      video.style.transform = facingMode === "user" ? "scaleX(-1)" : "none";
+      container.style.position = "relative";
+      container.insertBefore(video, renderer.domElement);
+      insertedVideoEl = video;
+
+      if (enableMotion) {
+        const onOrientation = (e: DeviceOrientationEvent) => {
+          // beta: x axis (front/back tilt), gamma: y axis (left/right tilt)
+          if (e.beta == null || e.gamma == null) return;
+          const beta = THREE.MathUtils.degToRad(e.beta);
+          const gamma = THREE.MathUtils.degToRad(e.gamma);
+
+          // Small, clamped rotations feel more "anchored"
+          // tuned smaller so the island stays nearer center
+          targetPitch = THREE.MathUtils.clamp(beta * 0.10, -0.35, 0.35);
+          targetYaw = THREE.MathUtils.clamp(gamma * 0.18, -0.45, 0.45);
+        };
+
+        window.addEventListener("deviceorientation", onOrientation, true);
+        removeOrientationListener = () => {
+          window.removeEventListener("deviceorientation", onOrientation, true);
+        };
+      }
+
       // 최고 해상도 카메라 스트림 요청 (화질 개선)
       const constraints = {
         video: {
-          facingMode: "environment",
+          facingMode: facingMode,
           width: { ideal: 3840, min: 1920 },
           height: { ideal: 2160, min: 1080 },
-          aspectRatio: { ideal: 16/9 },
+          aspectRatio: { ideal: 16 / 9 },
           frameRate: { ideal: 30 },
         },
       };
@@ -124,52 +206,27 @@ export default function FloatingIsland({ isARMode = false }: FloatingIslandProps
           const settings = videoTrack.getSettings();
           console.log("Camera resolution:", settings.width, "x", settings.height);
           
-          video.play().then(() => {
+          video.play().then(async () => {
             // 비디오가 재생되면 해상도 확인 및 텍스처 업데이트
             if (video.videoWidth && video.videoHeight) {
               console.log("Video element resolution:", video.videoWidth, "x", video.videoHeight);
-              
-              // 비디오 해상도에 맞춰 텍스처 크기 업데이트
-              if (videoTexture) {
-                videoTexture.needsUpdate = true;
-              }
-              
-              // 렌더러 해상도도 비디오 해상도에 맞춰 조정 (화질 개선)
-              const videoAspect = video.videoWidth / video.videoHeight;
-              const containerAspect = width / height;
-              
-              // 비디오 해상도를 최대한 활용
-              if (video.videoWidth > width || video.videoHeight > height) {
-                const scale = Math.max(video.videoWidth / width, video.videoHeight / height);
-                renderer.setPixelRatio(Math.min(window.devicePixelRatio * scale, 4));
-              }
+            }
+
+            // Some browsers ignore initial constraints; try applying again.
+            try {
+              const track = stream.getVideoTracks()[0];
+              await track.applyConstraints({
+                width: { ideal: 3840, min: 1920 },
+                height: { ideal: 2160, min: 1080 },
+                frameRate: { ideal: 30 },
+              });
+            } catch {
+              // ignore
             }
           });
 
-          videoTexture = new THREE.VideoTexture(video);
-          videoTexture.colorSpace = THREE.SRGBColorSpace;
-          // 최고 화질 텍스처 설정
-          videoTexture.minFilter = THREE.LinearFilter;
-          videoTexture.magFilter = THREE.LinearFilter;
-          videoTexture.generateMipmaps = false;
-          videoTexture.flipY = true; // 카메라 위아래 수정
-          videoTexture.format = THREE.RGBAFormat;
-
-          // 카메라 피드를 배경으로 사용하는 큰 평면 생성 (화면 비율에 맞춤)
-          const aspect = width / height;
-          const bgWidth = 10;
-          const bgHeight = bgWidth / aspect;
-          const bgGeometry = new THREE.PlaneGeometry(bgWidth, bgHeight);
-          const bgMaterial = new THREE.MeshBasicMaterial({
-            map: videoTexture,
-            side: THREE.DoubleSide,
-          });
-          backgroundPlane = new THREE.Mesh(bgGeometry, bgMaterial);
-          backgroundPlane.position.z = -5;
-          scene.add(backgroundPlane);
-
           // 카메라 위치 조정 (AR 효과를 위해)
-          camera.position.set(0, 0, 5.5);
+          camera.position.set(0, 0, isARMode ? 6.0 : 5.5);
         })
         .catch((error) => {
           console.error("Error accessing camera:", error);
@@ -188,13 +245,47 @@ export default function FloatingIsland({ isARMode = false }: FloatingIslandProps
 
     function animate() {
       const t = Date.now() / 1000 - startTime;
-      plane.position.y = 0 + Math.sin(t * 0.6) * 0.08;
+      // floating motion: up/down bob, slight horizontal sway, slow z-rotation
+      const amplitudeY = isARMode ? 0.12 : 0.08;
+      const swayX = isARMode ? 0.06 : 0.03;
+      const rotZ = isARMode ? 0.06 : 0.03;
+      plane.position.y = baseY + Math.sin(t * 0.6) * amplitudeY;
+      plane.position.x = Math.sin(t * 0.5) * swayX;
       plane.rotation.y = 0.1 + Math.sin(t * 0.4) * 0.08;
       plane.rotation.x = -0.15 + Math.cos(t * 0.35) * 0.03;
-      
-      // 비디오 텍스처 업데이트
-      if (videoTexture) {
-        videoTexture.needsUpdate = true;
+      plane.rotation.z = Math.sin(t * 0.7) * rotZ;
+      // subtle "breathing" scale (do NOT accumulate)
+      const breathe = isARMode ? 0.010 : 0.006;
+      const s = 1 + Math.sin(t * 0.55) * breathe;
+      plane.scale.set(islandBaseScaleX * s, islandBaseScaleY * s, 1);
+
+      // AR-like motion: smoothly rotate camera with device orientation
+      if (isARMode && enableMotion) {
+        const smoothing = 0.08;
+        yaw += (targetYaw - yaw) * smoothing;
+        pitch += (targetPitch - pitch) * smoothing;
+        camera.rotation.set(pitch, yaw, 0);
+      }
+
+      // Attach "Click Me!" bubble to island in screen space (no React re-render)
+      if (isARMode && clickMeRef.current) {
+        const w = container.clientWidth || width;
+        const h = container.clientHeight || height;
+        const worldPos = new THREE.Vector3();
+        plane.getWorldPosition(worldPos);
+        const projected = worldPos.project(camera);
+
+        const x = (projected.x * 0.5 + 0.5) * w;
+        const y = (-projected.y * 0.5 + 0.5) * h;
+
+        // Offset to sit near the flower (right & slightly up)
+        const ox = Math.min(84, w * 0.18);
+        const oy = Math.min(64, h * 0.12);
+
+        const el = clickMeRef.current;
+        el.style.left = `${x + ox}px`;
+        el.style.top = `${y - oy}px`;
+        el.style.opacity = projected.z < 1 ? "1" : "0";
       }
       
       renderer.render(scene, camera);
@@ -214,21 +305,15 @@ export default function FloatingIsland({ isARMode = false }: FloatingIslandProps
         const pixelRatio = window.devicePixelRatio;
         renderer.setPixelRatio(pixelRatio);
       }
-      
-      // AR 모드일 때 배경 평면 크기 업데이트
-      if (isARMode && backgroundPlane) {
-        const aspect = w / h;
-        const bgWidth = 10;
-        const bgHeight = bgWidth / aspect;
-        backgroundPlane.geometry.dispose();
-        backgroundPlane.geometry = new THREE.PlaneGeometry(bgWidth, bgHeight);
-      }
     }
     window.addEventListener("resize", onResize);
 
     return () => {
       window.removeEventListener("resize", onResize);
       cancelAnimationFrame(animationId);
+
+      if (removeOrientationListener) removeOrientationListener();
+      renderer.domElement.removeEventListener("pointerdown", onPointerDown);
       
       // 카메라 스트림 정리
       if (streamRef.current) {
@@ -242,33 +327,51 @@ export default function FloatingIsland({ isARMode = false }: FloatingIslandProps
         videoRef.current = null;
       }
       
-      // 텍스처 정리
-      if (videoTexture) {
-        videoTexture.dispose();
-      }
-      
       renderer.dispose();
       planeGeometry.dispose();
       planeMaterial.dispose();
       islandTexture.dispose();
-      
-      if (backgroundPlane) {
-        backgroundPlane.geometry.dispose();
-        (backgroundPlane.material as THREE.Material).dispose();
+
+      if (insertedVideoEl && container.contains(insertedVideoEl)) {
+        container.removeChild(insertedVideoEl);
       }
       
       if (container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
       }
     };
-  }, [isARMode]);
+  }, [isARMode, enableMotion, facingMode]);
 
   return (
     <div
       ref={containerRef}
       className="relative w-full h-full"
       style={{ zIndex: 10, width: "100%", height: "100%" }}
-      aria-hidden
-    />
+    >
+      {/* AR mode speech bubble (attached to island via screen-space update) */}
+      {isARMode && (
+        <div
+          ref={clickMeRef}
+          className="absolute"
+          style={{
+            transform: "translate(-50%, -50%)",
+            zIndex: 5,
+            pointerEvents: "none",
+          }}
+        >
+          <div
+            className="px-4 py-2 rounded-full text-sm font-medium text-white/95 border border-white/30"
+            style={{
+              background: "rgba(107, 73, 122, 0.55)",
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
+              boxShadow: "0 10px 30px rgba(0,0,0,0.15)",
+            }}
+          >
+            Click Me!
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
