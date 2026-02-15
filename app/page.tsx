@@ -157,6 +157,7 @@ export default function Home() {
             enableMotion={motionEnabled}
             facingMode={cameraFacing}
             onIslandClick={openChat}
+            showClickMe={!isChatOpen}
           />
         </div>
       ) : (
@@ -249,77 +250,80 @@ export default function Home() {
           )}
 
           {/* 우하단 액션 버튼들 (요청한 pill 디자인) */}
-          <div
-            className="absolute right-6 bottom-6"
-            style={{ zIndex: 30, paddingBottom: "env(safe-area-inset-bottom)" }}
-          >
+          {/* camera controls: normal AR mode (not chatting) */}
+          {!isChatOpen && (
             <div
-              className="flex items-center rounded-full border border-white/60 shadow"
-              style={{
-                background: "rgba(255,255,255,0.85)",
-                backdropFilter: "blur(12px)",
-                WebkitBackdropFilter: "blur(12px)",
-                padding: 6,
-                gap: 8,
-              }}
+              className="absolute right-6 bottom-6"
+              style={{ zIndex: 30, paddingBottom: "env(safe-area-inset-bottom)" }}
             >
-              <button
-                aria-label="Capture"
-                className="w-12 h-12 rounded-full flex items-center justify-center"
-                onClick={() => {}}
-              >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M9 7l1.2-2h3.6L15 7h3a2 2 0 012 2v9a2 2 0 01-2 2H6a2 2 0 01-2-2V9a2 2 0 012-2h3z"
-                    stroke="#8A8A8A"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <circle cx="12" cy="14" r="3" stroke="#8A8A8A" strokeWidth="1.8" />
-                </svg>
-              </button>
-
-              <button
-                onClick={toggleFacing}
-                aria-label="Toggle camera"
-                className="w-12 h-12 rounded-full flex items-center justify-center"
+              <div
+                className="flex items-center rounded-full border border-white/60 shadow"
                 style={{
-                  background: "#BFDBFE",
-                  boxShadow: "0 1px 2px rgba(0,0,0,0.08)",
+                  background: "rgba(255,255,255,0.85)",
+                  backdropFilter: "blur(12px)",
+                  WebkitBackdropFilter: "blur(12px)",
+                  padding: 6,
+                  gap: 8,
                 }}
               >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M7 9c0-1.1.9-2 2-2h6"
-                    stroke="white"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                  />
-                  <path
-                    d="M15 7l2 2-2 2"
-                    stroke="white"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M17 15c0 1.1-.9 2-2 2H9"
-                    stroke="white"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                  />
-                  <path
-                    d="M9 17l-2-2 2-2"
-                    stroke="white"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
+                <button
+                  aria-label="Capture"
+                  className="w-12 h-12 rounded-full flex items-center justify-center"
+                  onClick={() => {}}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M9 7l1.2-2h3.6L15 7h3a2 2 0 012 2v9a2 2 0 01-2 2H6a2 2 0 01-2-2V9a2 2 0 012-2h3z"
+                      stroke="#8A8A8A"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <circle cx="12" cy="14" r="3" stroke="#8A8A8A" strokeWidth="1.8" />
+                  </svg>
+                </button>
+
+                <button
+                  onClick={toggleFacing}
+                  aria-label="Toggle camera"
+                  className="w-12 h-12 rounded-full flex items-center justify-center"
+                  style={{
+                    background: "#BFDBFE",
+                    boxShadow: "0 1px 2px rgba(0,0,0,0.08)",
+                  }}
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M7 9c0-1.1.9-2 2-2h6"
+                      stroke="white"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M15 7l2 2-2 2"
+                      stroke="white"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M17 15c0 1.1-.9 2-2 2H9"
+                      stroke="white"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M9 17l-2-2 2-2"
+                      stroke="white"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Chat UI (island click opens) */}
           {isChatOpen && (
@@ -351,6 +355,103 @@ export default function Home() {
                   paddingBottom: "env(safe-area-inset-bottom)",
                 }}
               >
+                {/* controls row above input: back (left) + camera pill (right) */}
+                <div
+                  className="w-full flex items-center justify-between"
+                  style={{ marginBottom: 10 }}
+                >
+                  <button
+                    type="button"
+                    aria-label="Back"
+                    onClick={() => setIsChatOpen(false)}
+                    className="w-12 h-12 rounded-full flex items-center justify-center border border-white/60 shadow"
+                    style={{
+                      background: "rgba(255,255,255,0.85)",
+                      backdropFilter: "blur(12px)",
+                      WebkitBackdropFilter: "blur(12px)",
+                    }}
+                  >
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M15 18l-6-6 6-6"
+                        stroke="#111"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
+
+                  <div
+                    className="flex items-center rounded-full border border-white/60 shadow"
+                    style={{
+                      background: "rgba(255,255,255,0.85)",
+                      backdropFilter: "blur(12px)",
+                      WebkitBackdropFilter: "blur(12px)",
+                      padding: 6,
+                      gap: 8,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      aria-label="Capture"
+                      className="w-12 h-12 rounded-full flex items-center justify-center"
+                      onClick={() => {}}
+                    >
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path
+                          d="M9 7l1.2-2h3.6L15 7h3a2 2 0 012 2v9a2 2 0 01-2 2H6a2 2 0 01-2-2V9a2 2 0 012-2h3z"
+                          stroke="#8A8A8A"
+                          strokeWidth="1.8"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <circle cx="12" cy="14" r="3" stroke="#8A8A8A" strokeWidth="1.8" />
+                      </svg>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={toggleFacing}
+                      aria-label="Toggle camera"
+                      className="w-12 h-12 rounded-full flex items-center justify-center"
+                      style={{
+                        background: "#BFDBFE",
+                        boxShadow: "0 1px 2px rgba(0,0,0,0.08)",
+                      }}
+                    >
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                        <path
+                          d="M7 9c0-1.1.9-2 2-2h6"
+                          stroke="white"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                        />
+                        <path
+                          d="M15 7l2 2-2 2"
+                          stroke="white"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M17 15c0 1.1-.9 2-2 2H9"
+                          stroke="white"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                        />
+                        <path
+                          d="M9 17l-2-2 2-2"
+                          stroke="white"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
                 <div
                   className="w-full flex items-center"
                   style={{
@@ -366,7 +467,7 @@ export default function Home() {
                     ref={inputRef}
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
-                    placeholder="Lately, I feel really lonely being by myself..."
+                    placeholder="Talk to me"
                     className="flex-1 bg-transparent outline-none px-3 text-[15px] text-black placeholder:text-black/50"
                     disabled={isSending}
                   />

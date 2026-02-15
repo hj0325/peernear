@@ -8,6 +8,7 @@ interface FloatingIslandProps {
   enableMotion?: boolean;
   facingMode?: "environment" | "user";
   onIslandClick?: () => void;
+  showClickMe?: boolean;
 }
 
 export default function FloatingIsland({
@@ -15,6 +16,7 @@ export default function FloatingIsland({
   enableMotion = false,
   facingMode = "environment",
   onIslandClick,
+  showClickMe = true,
 }: FloatingIslandProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const clickMeRef = useRef<HTMLDivElement>(null);
@@ -268,7 +270,7 @@ export default function FloatingIsland({
       }
 
       // Attach "Click Me!" bubble to island in screen space (no React re-render)
-      if (isARMode && clickMeRef.current) {
+      if (isARMode && showClickMe && clickMeRef.current) {
         const w = container.clientWidth || width;
         const h = container.clientHeight || height;
         const worldPos = new THREE.Vector3();
@@ -286,6 +288,8 @@ export default function FloatingIsland({
         el.style.left = `${x + ox}px`;
         el.style.top = `${y - oy}px`;
         el.style.opacity = projected.z < 1 ? "1" : "0";
+      } else if (clickMeRef.current) {
+        clickMeRef.current.style.opacity = "0";
       }
       
       renderer.render(scene, camera);
@@ -349,7 +353,7 @@ export default function FloatingIsland({
       style={{ zIndex: 10, width: "100%", height: "100%" }}
     >
       {/* AR mode speech bubble (attached to island via screen-space update) */}
-      {isARMode && (
+      {isARMode && showClickMe && (
         <div
           ref={clickMeRef}
           className="absolute"
